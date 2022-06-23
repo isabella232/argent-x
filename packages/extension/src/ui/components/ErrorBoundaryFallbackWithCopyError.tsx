@@ -53,6 +53,7 @@ Unable to parse error
 export interface IErrorBoundaryFallbackWithCopyError
   extends ErrorBoundaryState {
   message?: string
+  extraInfo?: string
 }
 
 export const coerceErrorToString = (error: any): string => {
@@ -70,7 +71,7 @@ export const coerceErrorToString = (error: any): string => {
 
 const ErrorBoundaryFallbackWithCopyError: FC<
   IErrorBoundaryFallbackWithCopyError
-> = ({ error, errorInfo, message = "Sorry, an error occurred" }) => {
+> = ({ error, errorInfo, message = "Sorry, an error occurred", extraInfo }) => {
   const errorPayload = useMemo(() => {
     try {
       const displayError = coerceErrorToString(error)
@@ -79,6 +80,8 @@ const ErrorBoundaryFallbackWithCopyError: FC<
 
 ${displayError}
 ${displayStack}
+
+${extraInfo}
       `
     } catch (e) {
       // ignore error

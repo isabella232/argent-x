@@ -1,4 +1,4 @@
-import { FC, Suspense, useEffect, useRef } from "react"
+import { FC, Suspense, useEffect, useMemo, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import useSWR from "swr"
@@ -31,6 +31,7 @@ import { MigrationBanner } from "./MigrationBanner"
 import { TokenList } from "./TokenList"
 import { AddTokenIconButton, TokenTitle, TokenWrapper } from "./TokenListItem"
 import { fetchFeeTokenBalance } from "./tokens.service"
+import { useTokensWithBalance } from "./tokens.state"
 import { TransferButtons } from "./TransferButtons"
 import { UpgradeBanner } from "./UpgradeBanner"
 import { useAccountStatus } from "./useAccountStatus"
@@ -95,6 +96,17 @@ export const AccountTokens: FC<AccountTokensProps> = ({ account }) => {
     connectAccount(account)
   }, [account])
 
+  const { tokenDetails } = useTokensWithBalance(account)
+
+  const debugInfo = useMemo(() => {
+    const debugInfo = {
+      accountAddress: account?.address,
+      networkId: account?.networkId,
+      tokenDetails,
+    }
+    return JSON.stringify(debugInfo, null, 2)
+  }, [account, tokenDetails])
+
   return (
     <Container>
       <AccountSubHeader
@@ -119,6 +131,7 @@ export const AccountTokens: FC<AccountTokensProps> = ({ account }) => {
         fallback={
           <ErrorBoundaryFallbackWithCopyError
             message={"Sorry, an error occurred fetching tokens"}
+            extraInfo={debugInfo}
           />
         }
       >
