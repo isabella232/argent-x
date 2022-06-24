@@ -1,6 +1,6 @@
 import { ThemeProvider, createTheme } from "@mui/material"
 import { FC, Suspense } from "react"
-import { createGlobalStyle } from "styled-components"
+import styled, { createGlobalStyle } from "styled-components"
 import { normalize } from "styled-normalize"
 import { SWRConfig } from "swr"
 
@@ -63,6 +63,16 @@ const theme = createTheme({
   },
 })
 
+const DebugBadge = styled.div`
+  position: fixed;
+  z-index: 123;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #c12026;
+  text-align: center;
+`
+
 export const App: FC = () => {
   const extensionIsInTab = useExtensionIsInTab()
   return (
@@ -80,6 +90,9 @@ export const App: FC = () => {
             <AppRoutes />
           </Suspense>
         </ErrorBoundary>
+        <DebugBadge>
+          Debug v{process.env.VERSION} - For use only as instructed
+        </DebugBadge>
       </ThemeProvider>
     </SWRConfig>
   )
