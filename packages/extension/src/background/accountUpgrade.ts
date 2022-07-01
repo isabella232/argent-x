@@ -1,3 +1,4 @@
+import { Account as AccountV390, stark as starkV390 } from "starknet-390/src"
 import {
   Account,
   AddTransactionResponse,
@@ -6,11 +7,13 @@ import {
   constants,
   number,
   stark,
-} from "starknet"
-import { Account as AccountV390, stark as starkV390 } from "starknet-390"
+} from "starknet/src"
 
+import { ActionItem } from "../shared/actionQueue"
+import { MessageType } from "../shared/messages"
 import { BaseWalletAccount } from "../shared/wallet.model"
 import { hasNewDerivationPath } from "../shared/wallet.service"
+import { Queue } from "./actionQueue"
 import { getNetwork } from "./customNetworks"
 import { TransactionTracker } from "./transactions/transactions"
 import { Wallet } from "./wallet"
@@ -84,10 +87,14 @@ export const getImplementationUpgradePath = (
   }
 }
 
+const USE_TRANSACTION_REVIEW = true
+
 export const upgradeAccount = async (
   account: BaseWalletAccount,
   wallet: Wallet,
   transactionTracker: TransactionTracker,
+  actionQueue: Queue<ActionItem>,
+  sendToTabAndUi: (msg: MessageType) => Promise<void>,
 ) => {
   const starknetAccount = await wallet.getStarknetAccount(account)
   const fullAccount = await wallet.getAccount(account)
@@ -102,23 +109,50 @@ export const upgradeAccount = async (
   })
   const currentImplementation = stark.makeAddress(number.toHex(result[0]))
 
-  const updateAccount = getImplementationUpgradePath(
-    currentImplementation,
-    fullAccount.signer.derivationPath,
-  )
+  if (USE_TRANSACTION_REVIEW) {
+    /** TODO: remove */
+    console.log({ currentImplementation, newImplementation })
+    if (newImplementation) {
+      const msg = {
+        type: "EXECUTE_TRANSACTION",
+        data: {
+          transactions: {
+            contractAddress: fullAccount.address,
+            entrypoint: "upgrade",
+            calldata: stark.compileCalldata({
+              implementation: newImplementation,
+            }),
+          },
+        },
+      }
+      const { meta } = await actionQueue.push({
+        type: "TRANSACTION",
+        payload: msg.data,
+      })
+      return sendToTabAndUi({
+        type: "EXECUTE_TRANSACTION_RES",
+        data: { actionHash: meta.hash },
+      })
+    }
+  } else {
+    const updateAccount = getImplementationUpgradePath(
+      currentImplementation,
+      fullAccount.signer.derivationPath,
+    )
 
-  const updateTransaction = await updateAccount(
-    newImplementation,
-    fullAccount.address,
-    // Account extends Provider
-    starknetAccount,
-    // signer is a private property of the account, this will be public in the future
-    wallet.getKeyPairByDerivationPath(fullAccount.signer.derivationPath),
-  )
+    const updateTransaction = await updateAccount(
+      newImplementation,
+      fullAccount.address,
+      // Account extends Provider
+      starknetAccount,
+      // signer is a private property of the account, this will be public in the future
+      wallet.getKeyPairByDerivationPath(fullAccount.signer.derivationPath),
+    )
 
-  transactionTracker.add({
-    hash: updateTransaction.transaction_hash,
-    account: fullAccount,
-    meta: { title: "Upgrading account" },
-  })
+    transactionTracker.add({
+      hash: updateTransaction.transaction_hash,
+      account: fullAccount,
+      meta: { title: "Upgrading account" },
+    })
+  }
 }
